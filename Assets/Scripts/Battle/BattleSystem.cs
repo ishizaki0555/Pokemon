@@ -59,6 +59,8 @@ public class BattleSystem : MonoBehaviour
         dialogBox.SetMoveNames(playerUnit.Monster.Moves);
         dialogBox.EnableActionSelector(false);
         yield return dialogBox.TypeDialog($"やせいの {enemyUnit.Monster.Base.Name} あらわれた！");
+
+        // プレイヤーの行動選択へ
         PlayerAction();
     }
 
@@ -129,8 +131,16 @@ public class BattleSystem : MonoBehaviour
         }
         else
         {
-            //それ以外ならEnemyMove
-            StartCoroutine(EnemyMove());
+            // もしプレイヤーのモンスターの速度が速いなら、EnemyMoveを実行
+            if (playerUnit.Monster.Base.Speed > enemyUnit.Monster.Base.Speed)
+            {
+                StartCoroutine(EnemyMove());
+            }
+            else
+            {
+                // それ以外ならPlayerActionを実行
+                PlayerAction();
+            }
         }
     }
 
@@ -193,7 +203,16 @@ public class BattleSystem : MonoBehaviour
         else
         {
             //それ以外ならEnemyMove
-            PlayerAction();
+            // もしプレイヤーのモンスターの速度が速いなら、PlayerMoveを実行
+            if(playerUnit.Monster.Base.Speed < enemyUnit.Monster.Base.Speed)
+            {
+                StartCoroutine(PerformPlayerMove());
+            }
+            else
+            {
+                // それ以外なら
+                PlayerAction();
+            }
         }
     }
 
@@ -312,10 +331,14 @@ public class BattleSystem : MonoBehaviour
             //・メッセージの復活
             dialogBox.EnableDialogText(true);
             //・技決定の処理
-            StartCoroutine(PerformPlayerMove());
-        }
+            // 速度の速い順に処理を行う
+            if (playerUnit.Monster.Speed > enemyUnit.Monster.Speed)
+            {
+                StartCoroutine(PerformPlayerMove());
+            }
+            else
+            {
+                StartCoroutine(EnemyMove());
+            } }
     }
-    /// <summary>
-    /// ・ActionSelectorでどちらを選択しているのか分かりやすくする
-    /// </summary>
 }

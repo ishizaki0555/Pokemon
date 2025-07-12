@@ -14,10 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   name: "\u30AB\u30D0"
   description: "\u305F\u3060\u306E\u30AB\u30D0"
-  level: 33
-  exp: 13946
+  level: 37
+  exp: 21248
   basicExp: 0
-  necessaryExp: 25155
+  necessaryExp: 36470
   frontSprite: {fileID: -2022429191, guid: d7c6555912ad6004a884a8abc000eb70, type: 3}
   backSprite: {fileID: -209790237, guid: d7c6555912ad6004a884a8abc000eb70, type: 3}
   type1: 3
@@ -27,7 +27,7 @@ MonoBehaviour:
   defense: 49
   spAttack: 65
   spDefense: 65
-  speed: 45
+  speed: 200
   learnableMoves:
   - _base: {fileID: 11400000, guid: bb937a1158edc494fa68caebc91e427a, type: 2}
     lavel: 5
