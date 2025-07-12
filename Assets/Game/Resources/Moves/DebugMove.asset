@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e8b8a894aca8fa4496bec1816a8af2d, type: 3}
+  m_Name: DebugMove
+  m_EditorClassIdentifier: 
+  name: "\u305B\u304B\u3044\u306E\u304A\u308F\u308A"
+  description: "\u304A\u308F\u308A\u3060"
+  type: 1
+  power: 1000000
+  accuracy: 1000000
+  pp: 99
+  attackSE: {fileID: 8300000, guid: b36e97de8fae2dd45858b2cc9b055a69, type: 3}

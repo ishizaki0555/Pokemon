@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5e6c511078f70644bb59121322c5706, type: 3}
+  m_Name: Kaba
+  m_EditorClassIdentifier: 
+  name: "\u30AB\u30D0"
+  description: "\u305F\u3060\u306E\u30AB\u30D0"
+  level: 33
+  exp: 13946
+  basicExp: 0
+  necessaryExp: 25155
+  frontSprite: {fileID: -2022429191, guid: d7c6555912ad6004a884a8abc000eb70, type: 3}
+  backSprite: {fileID: -209790237, guid: d7c6555912ad6004a884a8abc000eb70, type: 3}
+  type1: 3
+  type2: 6
+  maxHP: 49
+  attack: 49
+  defense: 49
+  spAttack: 65
+  spDefense: 65
+  speed: 45
+  learnableMoves:
+  - _base: {fileID: 11400000, guid: bb937a1158edc494fa68caebc91e427a, type: 2}
+    lavel: 5
+  - _base: {fileID: 11400000, guid: 3816ffe87e137ed43aa066cef1214649, type: 2}
+    lavel: 10
+  - _base: {fileID: 11400000, guid: 67cd5e2c40fe1764198201a2846f9b31, type: 2}
+    lavel: 15
+  - _base: {fileID: 11400000, guid: 76db813570e37c346ab8073775f2a758, type: 2}
+    lavel: 0
