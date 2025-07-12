@@ -15,7 +15,7 @@ MonoBehaviour:
   name: "\u30AB\u30D0"
   description: "\u305F\u3060\u306E\u30AB\u30D0"
   level: 37
-  exp: 21248
+  exp: 14285
   basicExp: 0
   necessaryExp: 36470
   frontSprite: {fileID: -2022429191, guid: d7c6555912ad6004a884a8abc000eb70, type: 3}

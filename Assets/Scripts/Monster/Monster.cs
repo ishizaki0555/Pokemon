@@ -1,13 +1,27 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+[System.Serializable]
 //レベルに応じたステータスの違うモンスターの生成するクラス
 //注意：データのみ扱う：純粋なC#のクラス
 public class Monster
 {
+    [SerializeField] MonsterBase _base;
+    [SerializeField] int level;
+
+
     //ベースとなるデータ
-    public MonsterBase Base { get; set; }
-    public int Level { get; set; }
+    public MonsterBase Base
+    {
+        get{
+            return _base;
+        }
+    }
+    public int Level {
+        get {
+            return level;
+        }
+    }
 
     public int HP { get;set; }
 
@@ -15,16 +29,14 @@ public class Monster
     public List<Move> Moves { get; set; }
 
     //コンストラクター：生成時の初期設定
-    public Monster(MonsterBase mBase, int mlevel)
+    public void Init()
     {
-        Base = mBase;
-        Level = mlevel;
         HP = MaxHp;
 
         Moves = new List<Move>();   
 
         //使える技の設定：覚える技のレベル以上なら、Movesに追加
-        foreach(LearnableMove learnableMove in mBase.LearnableMoves)
+        foreach(LearnableMove learnableMove in Base.LearnableMoves)
         {
             if(Level >= learnableMove.Lavel)
             {
@@ -58,10 +70,7 @@ public class Monster
         //クリティカル
         float critical = 1f;
         //6.25%でクリティカル
-        if(Random.value * 100 <= 6.25f)
-        {
-            critical = 2f;
-        }
+        if(Random.value * 100 <= 6.25f) critical = 2f;
         //相性
         float type = TypeChart.GetEffectivenss(move.Base.Type, Base.Type1) * TypeChart.GetEffectivenss(move.Base.Type, Base.Type2);
         DamageDetails damageDetails = new DamageDetails
@@ -71,9 +80,12 @@ public class Monster
             TypeEffectiveness = type,
         };
 
+        float attack = (move.Base.IsPhysical) ?  attaker.Attack : attaker.SpAttack; //物理技か特殊技かで攻撃力を変える
+        float defense = (move.Base.IsPhysical) ? SpDefense : Defense; //物理技か特殊技かで防御力を変える
+
         float modifiers = Random.Range(0.85f, 1f) * type * critical;
         float a = (2 * attaker.Level + 10) / 250f;
-        float b = a * move.Base.Power * ((float)attaker.Attack / Defense) + 2;
+        float b = a * move.Base.Power * ((float)attack / defense) + 2;
         int damage = Mathf.FloorToInt(b * modifiers);
         HP -= damage;
         if(HP <= 0)

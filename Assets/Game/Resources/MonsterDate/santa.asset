@@ -17,7 +17,7 @@ MonoBehaviour:
   level: 20
   exp: 0
   basicExp: 5000
-  necessaryExp: 0
+  necessaryExp: 4960
   frontSprite: {fileID: 844163316, guid: 3d56dc214e12bdd4da6da607a49b73b0, type: 3}
   backSprite: {fileID: 125836270, guid: 3d56dc214e12bdd4da6da607a49b73b0, type: 3}
   type1: 6
@@ -30,7 +30,7 @@ MonoBehaviour:
   speed: 100
   learnableMoves:
   - _base: {fileID: 11400000, guid: bb937a1158edc494fa68caebc91e427a, type: 2}
-    lavel: 5
+    lavel: 1
   - _base: {fileID: 11400000, guid: 3816ffe87e137ed43aa066cef1214649, type: 2}
     lavel: 10
   - _base: {fileID: 11400000, guid: 67cd5e2c40fe1764198201a2846f9b31, type: 2}

@@ -5,8 +5,6 @@ using TMPro.EditorUtilities;
 
 public class buttleUnit : MonoBehaviour
 {
-    [SerializeField] MonsterBase _base;
-    [SerializeField] int level;
     [SerializeField] bool isPlayerUnit;
 
     public Monster Monster { get; set; }
@@ -20,22 +18,22 @@ public class buttleUnit : MonoBehaviour
 
     private void Awake()
     {
-        level = _base.Level;
+        //level = _base.Level;
         image = GetComponent<Image>();
         originalPos = transform.localPosition;
         originalColor = image.color;
     }
-    public void UpdatAwake()
-    {
-        level = _base.Level;
-        Monster.Level = level;
-    }
+    //public void UpdatAwake()
+    //{
+    //    level = _base.Level;
+    //    Monster.Level = level;
+    //}
 
-    public void Setup()
+    public void Setup(Monster monster)
     {
         //_baseからレベルに応じたモンスターを生成する
         //BattleSyestemで使うからプロパティに入れる
-        Monster = new Monster(_base, level);
+        Monster = monster;
 
         if(isPlayerUnit)
         {

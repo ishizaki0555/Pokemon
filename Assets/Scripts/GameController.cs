@@ -54,7 +54,11 @@ public class GameController : MonoBehaviour
         ParentCanvas.SetActive(false);
         battleSystem.gameObject.SetActive(true);
         worldCamera.gameObject.SetActive(false);
-        battleSystem.StartBattle();
+
+        var playerParty = playerController.GetComponent<MonsterParty>();
+        var wildMonster = FindAnyObjectByType<MapArea>().GetComponent<MapArea>().GetRandomWildMonster();
+
+        battleSystem.StartBattle(playerParty, wildMonster);
         yield return null;
     }
 

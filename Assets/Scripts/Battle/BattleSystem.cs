@@ -32,8 +32,14 @@ public class BattleSystem : MonoBehaviour
     [SerializeField] AudioClip RunSE;
     [SerializeField] AudioClip LevelUpSE;
 
-    public void StartBattle()
-    {
+    MonsterParty playerParty; //プレイヤーのモンスターのパーティー
+    Monster wildMonster; //野生のモンスター
+
+
+    public void StartBattle(MonsterParty monsterParty, Monster wildMonster)
+    {   
+        this.playerParty = monsterParty;
+        this.wildMonster = wildMonster;
         StartCoroutine(SetupBattle());
         if(playerUnit.Monster.Base.Level == 1)
         {
@@ -50,8 +56,8 @@ public class BattleSystem : MonoBehaviour
     {
         state = BattleState.Start;
         //モンスターの生成と描画
-        playerUnit.Setup();
-        enemyUnit.Setup();
+        playerUnit.Setup(playerParty.GetHealthyMonster());
+        enemyUnit.Setup(wildMonster);
 
         //HUDの描画
         playerHub.SetData(playerUnit.Monster);
@@ -84,6 +90,8 @@ public class BattleSystem : MonoBehaviour
 
         //技の決定
         Move move = playerUnit.Monster.Moves[currentMove];
+        move.PP--;
+
         yield return dialogBox.TypeDialog($"{playerUnit.Monster.Base.Name}は{move.Base.Name}をつかった");
         playerUnit.PlayerAttackAnimation();
         audio.PlayOneShot(move.Base.AttackSE);
@@ -131,16 +139,7 @@ public class BattleSystem : MonoBehaviour
         }
         else
         {
-            // もしプレイヤーのモンスターの速度が速いなら、EnemyMoveを実行
-            if (playerUnit.Monster.Base.Speed > enemyUnit.Monster.Base.Speed)
-            {
-                StartCoroutine(EnemyMove());
-            }
-            else
-            {
-                // それ以外ならPlayerActionを実行
-                PlayerAction();
-            }
+            StartCoroutine(EnemyMove());
         }
     }
 
@@ -153,7 +152,7 @@ public class BattleSystem : MonoBehaviour
         playerUnit.Monster.Base.Exp = 0;
         expBar.SetEXP(playerUnit.Monster.Base.Exp / playerUnit.Monster.Base.NecessaryExp);
         playerHub.SetData(playerUnit.Monster);
-        playerUnit.UpdatAwake();
+        //playerUnit.UpdatAwake();
         playerHub.SetData(playerUnit.Monster);
         audio.PlayOneShot(LevelUpSE);
         yield return dialogBox.TypeDialog($"{playerUnit.Monster.Base.Name}は{playerUnit.Monster.Base.Level}に上がった！");
@@ -179,7 +178,10 @@ public class BattleSystem : MonoBehaviour
 
         //技の決定：ランダム
         Move move = enemyUnit.Monster.GetRandomMove();
+        move.PP--;
         yield return dialogBox.TypeDialog($"{enemyUnit.Monster.Base.Name}は{move.Base.Name}をつかった");
+
+        //敵の攻撃アニメーション
         enemyUnit.PlayerAttackAnimation();
         audio.PlayOneShot(move.Base.AttackSE);
         yield return new WaitForSeconds(0.7f);
@@ -197,22 +199,35 @@ public class BattleSystem : MonoBehaviour
         {
             yield return dialogBox.TypeDialog($"{playerUnit.Monster.Base.Name} はたおれた！");
             playerUnit.PlayerFaintanimation();
+
             yield return new WaitForSeconds(0.7f);
-            BattleOver();
-        }
-        else
-        {
-            //それ以外ならEnemyMove
-            // もしプレイヤーのモンスターの速度が速いなら、PlayerMoveを実行
-            if(playerUnit.Monster.Base.Speed < enemyUnit.Monster.Base.Speed)
+            var nextMonster = playerParty.GetHealthyMonster();
+            if(nextMonster != null)
             {
-                StartCoroutine(PerformPlayerMove());
+                state = BattleState.Start;
+                //モンスターの生成と描画
+                playerUnit.Setup(nextMonster);
+
+                //HUDの描画
+                playerHub.SetData(nextMonster);
+
+                dialogBox.SetMoveNames(nextMonster.Moves);
+                dialogBox.EnableActionSelector(false);
+
+                yield return dialogBox.TypeDialog($"いけ！{nextMonster.Base.name}!");
+
+                // プレイヤーの行動選択へ
+                PlayerAction();
             }
             else
             {
-                // それ以外なら
-                PlayerAction();
+                BattleOver();
             }
+        }
+        else
+        {
+            // それ以外なら
+            PlayerAction();
         }
     }
 
@@ -339,6 +354,7 @@ public class BattleSystem : MonoBehaviour
             else
             {
                 StartCoroutine(EnemyMove());
-            } }
+            }
+        }
     }
 }
