@@ -1,8 +1,7 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using System;
-using UnityEditor;
+
 
 public enum BattleState
 {
@@ -136,38 +135,7 @@ public class BattleSystem : MonoBehaviour
 
         if (state == BattleState.PerformMove)
             ActionSelection();
-    }
-
-    //レベルの加算と必要経験値の再計算/データの適用
-    //IEnumerator LevelUp()
-    //{
-    //    yield return new WaitForSeconds(0.7f);
-    //    playerUnit.Monster.Base.Level++;
-    //    playerUnit.Monster.Base.NecessaryExp = Mathf.Floor(Mathf.Pow(playerUnit.Monster.Base.Level, 3) * (24 + Mathf.Floor((playerUnit.Monster.Base.Level + 1) / 3)) / 50);
-    //    playerUnit.Monster.Base.Exp = 0;
-    //    expBar.SetEXP(playerUnit.Monster.Base.Exp / playerUnit.Monster.Base.NecessaryExp);
-    //    playerHub.SetData(playerUnit.Monster);
-    //    //playerUnit.UpdatAwake();
-    //    playerHub.SetData(playerUnit.Monster);
-    //    audio.PlayOneShot(LevelUpSE);
-    //    yield return dialogBox.TypeDialog($"{playerUnit.Monster.Base.Name}は{playerUnit.Monster.Base.Level}に上がった！");
-    //}
-
-    ////溢れた経験値の計算
-    //float OverGetExp()
-    //{
-    //    float overExp = playerUnit.Monster.Base.Exp - playerUnit.Monster.Base.NecessaryExp;
-    //    return overExp;
-    //}
-
-    ////経験値の加算
-    //float GetExp()
-    //{
-    //    playerUnit.Monster.Base.Exp += enemyUnit.Monster.Base.BasicExp / 1 * enemyUnit.Monster.Base.Level / 7 * 1 * 1 / 1;
-    //    return enemyUnit.Monster.Base.BasicExp / 1 * enemyUnit.Monster.Base.Level / 7 * 1 * 1 / 1;
-    //}
-
-    
+    }    
 
     IEnumerator RunMove(buttleUnit sourceUnit, buttleUnit targetUnit, Move move  )
     {
@@ -201,39 +169,27 @@ public class BattleSystem : MonoBehaviour
             yield return dialogBox.TypeDialog($"{targetUnit.Monster.Base.Name} はたおれた！");
             targetUnit.PlayerFaintanimation();
             yield return new WaitForSeconds(0.7f);
-            /*float exp = GetExp();
-            yield return dialogBox.TypeDialog($"{playerUnit.Monster.Base.Name}は経験値 " + exp + "を手に入れた！");
-            yield return StartCoroutine(expBar.SetEXPSmooth(Mathf.Clamp((float)playerUnit.Monster.Base.Exp, 0, playerUnit.Monster.Base.NecessaryExp) / playerUnit.Monster.Base.NecessaryExp, exp));
-            if (playerUnit.Monster.Base.NecessaryExp <= playerUnit.Monster.Base.Exp) // レベルが上がった時
-            {
-                float overExp = OverGetExp();
-                yield return StartCoroutine(LevelUp());
-                //あふれた経験値：レベルが上がったらループする
-                while (overExp > 0)
-                {
-                    playerUnit.Monster.Base.Exp += overExp;
-                    yield return StartCoroutine(expBar.SetEXPSmooth(Mathf.Clamp((float)playerUnit.Monster.Base.Exp, 0, playerUnit.Monster.Base.NecessaryExp) / playerUnit.Monster.Base.NecessaryExp, exp));
-                    if (playerUnit.Monster.Base.Exp >= playerUnit.Monster.Base.NecessaryExp)
-                    {
-                        overExp = OverGetExp();
-                        Debug.Log(overExp);
-                        yield return StartCoroutine(LevelUp());
-                    }
-                    else
-                    {
-                        overExp = 0;
-                    }
-                }
-            }*/
-            yield return new WaitForSeconds(0.7f);
             CheckForBattleOver(targetUnit);
+        }
+        sourceUnit.Monster.OnAfterTurn(); //技を使った後の処理
+        yield return ShowStatusChanges(sourceUnit.Monster);
+        yield return sourceUnit.Hub.UpdateHP();
+
+        //相手が戦闘不能ならメッセージを出して、経験値の更新
+        if (sourceUnit.Monster.HP <= 0)
+        {
+            yield return dialogBox.TypeDialog($"{sourceUnit.Monster.Base.Name} はたおれた！");
+            sourceUnit.PlayerFaintanimation();
+            yield return new WaitForSeconds(0.7f);
+            CheckForBattleOver(sourceUnit);
         }
     }
 
     IEnumerable RunMoveEffects(Move move, Monster source, Monster target)
     {
+        //技の効果を適用
         var effects = move.Base.Effects;
-        if (move.Base.Effects.Boosts != null)
+        if (effects.Boosts != null)
         {
             if (move.Base.Target == Movetarget.Self)
                 source.ApplyBoost(effects.Boosts);
@@ -241,6 +197,11 @@ public class BattleSystem : MonoBehaviour
                 target.ApplyBoost(effects.Boosts);
         }
 
+        //ステータス異常の適用
+        if (effects.Status != ConditionID.None)
+        {
+            target.SetStatus(effects.Status);
+        }
 
         yield return ShowStatusChanges(source);
         yield return ShowStatusChanges(target);

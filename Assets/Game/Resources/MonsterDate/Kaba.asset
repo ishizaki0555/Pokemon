@@ -20,8 +20,8 @@ MonoBehaviour:
   necessaryExp: 36470
   frontSprite: {fileID: -2022429191, guid: d7c6555912ad6004a884a8abc000eb70, type: 3}
   backSprite: {fileID: -209790237, guid: d7c6555912ad6004a884a8abc000eb70, type: 3}
-  type1: 3
-  type2: 6
+  type1: 12
+  type2: 8
   maxHP: 49
   attack: 49
   defense: 49
@@ -33,7 +33,7 @@ MonoBehaviour:
     lavel: 5
   - _base: {fileID: 11400000, guid: 3816ffe87e137ed43aa066cef1214649, type: 2}
     lavel: 10
-  - _base: {fileID: 11400000, guid: 67cd5e2c40fe1764198201a2846f9b31, type: 2}
-    lavel: 15
+  - _base: {fileID: 11400000, guid: 110da2169e719404f8faf0dbd620b63a, type: 2}
+    lavel: 3
   - _base: {fileID: 11400000, guid: 76db813570e37c346ab8073775f2a758, type: 2}
     lavel: 0

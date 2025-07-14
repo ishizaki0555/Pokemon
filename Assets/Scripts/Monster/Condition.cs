@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -9,5 +10,7 @@ public class Condition
 
     // 状態異常時のメッセージ
     public string StartMessage { get; set; } 
+
+    public Action<Monster> OnAfterTurn { get; set; } // ターン終了後の処理
 
 }

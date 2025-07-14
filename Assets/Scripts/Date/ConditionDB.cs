@@ -1,8 +1,8 @@
-using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 
-public class ConditionDB
+public class ConditionDB : MonoBehaviour
 {
     // キー, value
     public static Dictionary<ConditionID, Condition> Conditions { get; set; }
@@ -12,7 +12,24 @@ public class ConditionDB
                 ConditionID.Poison, new Condition()
                 {
                     Name = "どく",
-                    StartMessage = "は毒になった！"
+                    StartMessage = "は毒になった！",
+                    OnAfterTurn = (Monster monster) =>
+                    {
+                        monster.UpdateHP(monster.MaxHp / 8); // 毒ダメージ
+                        monster.StatusChanges.Enqueue($"{monster.Base.Name}は毒でダメージを受けた！"); // 毒ダメージのメッセージ
+                    }
+                }
+            },
+            {
+                ConditionID.Burn, new Condition()
+                {
+                    Name = "やけど",
+                    StartMessage = "はやけどになった！",
+                    OnAfterTurn = (Monster monster) =>
+                    {
+                        monster.UpdateHP(monster.MaxHp / 16); // やけどダメージ
+                        monster.StatusChanges.Enqueue($"{monster.Base.Name}はやけどでダメージを受けた！"); // やけどダメージのメッセージ
+                    }
                 }
             }
         };

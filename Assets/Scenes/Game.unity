@@ -3307,6 +3307,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   isPlayerUnit: 1
+  hub: {fileID: 613848551}
 --- !u!224 &721905544 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 1110786795297727376, guid: cdd280657a3fb9f4a819224921f13eb8, type: 3}
@@ -45518,8 +45519,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playerUnit: {fileID: 698142785}
   enemyUnit: {fileID: 1516938703}
-  playerHub: {fileID: 613848551}
-  enemyHub: {fileID: 651618723}
   dialogBox: {fileID: 638789673}
   partyScreen: {fileID: 1913443037}
   expBar: {fileID: 2105894463}
@@ -45887,6 +45886,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   isPlayerUnit: 0
+  hub: {fileID: 651618723}
 --- !u!1 &1552329524
 GameObject:
   m_ObjectHideFlags: 0

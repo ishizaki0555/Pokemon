@@ -18,7 +18,9 @@ MonoBehaviour:
   power: 0
   accuracy: 100
   pp: 20
-  attackSE: {fileID: 0}
-  isPhysical: 0
+  category: 2
   effects:
+    boosts: []
     status: 1
+  target: 0
+  attackSE: {fileID: 8300000, guid: d67d674aaa40acf40ac2fc86c8287751, type: 3}

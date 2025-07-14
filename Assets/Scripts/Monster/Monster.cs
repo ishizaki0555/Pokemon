@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
 [System.Serializable]
@@ -28,9 +27,16 @@ public class Monster
 
     //使える技
     public List<Move> Moves { get; set; }
+
     public Dictionary<Stat, int> Stats { get; private set; } 
+
     public Dictionary<Stat, int > StatBoosts { get; private set; } //ステータスの上昇値
+
     public Queue<string> StatusChanges { get; private set; } = new Queue<string>(); //ステータスの変化を記録するキュー 
+    public Condition Status { get; private set; } //状態異常
+
+    public bool HpChanged { get; set; } //HPが変化したかどうか
+
 
     //コンストラクター：生成時の初期設定
     public void Init()
@@ -83,6 +89,7 @@ public class Monster
             { Stat.SpDefense, 0 },
             { Stat.Speed, 0 }
         };
+        Debug.Log("ステータスの上昇値をリセットしました。");
     }
 
     int GetStat(Stat stat)
@@ -112,9 +119,8 @@ public class Monster
 
             if(boost > 0)
                 StatusChanges.Enqueue($"{Base.Name}'s {stat} rose!");
-            else if (boost < 0)
-                StatusChanges.Enqueue($"{Base.Name}'s {stat} fell!");                                                                                                                                                                                                                                   
-            Debug.Log($"{stat} has been bossted to {StatBoosts[stat]}");
+            else
+                StatusChanges.Enqueue($"{Base.Name}の {stat} が落ちた！");
         }
     }
 
@@ -155,19 +161,33 @@ public class Monster
         float a = (2 * attaker.Level + 10) / 250f;
         float b = a * move.Base.Power * ((float)attack / defense) + 2;
         int damage = Mathf.FloorToInt(b * modifiers);
-        HP -= damage;
-        if(HP <= 0)
-        {
-            HP = 0;
-            damageDetails.Fainted = true;
-        }
+
+        UpdateHP(damage); //HPを減らす
+
         return damageDetails;
+    }
+
+    public void UpdateHP(int damage)
+    {
+        HP = Mathf.Clamp(HP - damage, 0, MaxHp); //HPを減らす。0未満にならないようにする
+        HpChanged = true; //HPが変化したことを記録
+    }
+
+    public void SetStatus(ConditionID conditionId)
+    {
+        Status = ConditionDB.Conditions[conditionId];
+        StatusChanges.Enqueue($"{Base.Name} {Status.StartMessage}"); //状態異常の開始メッセージをキューに追加
     }
 
     public Move GetRandomMove()
     {
         int r = Random.Range(0, Moves.Count);
         return Moves[r];
+    }
+
+    public void OnAfterTurn()
+    {
+        Status?.OnAfterTurn?.Invoke(this);
     }
 
     public void OnBattleOver()

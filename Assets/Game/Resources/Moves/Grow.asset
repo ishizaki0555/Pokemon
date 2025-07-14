@@ -12,14 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1e8b8a894aca8fa4496bec1816a8af2d, type: 3}
   m_Name: Grow
   m_EditorClassIdentifier: 
-  name: 
-  description: 
-  type: 0
-  power: 0
-  accuracy: 0
-  pp: 0
-  category: 0
+  name: Grow
+  description: "\u3072\u3063\u304B\u304F"
+  type: 1
+  power: 10
+  accuracy: 100
+  pp: 30
+  category: 2
   effects:
-    boosts: []
+    boosts:
+    - stat: 0
+      boost: -1
+    status: 0
   target: 0
-  attackSE: {fileID: 0}
+  attackSE: {fileID: 8300000, guid: 40a230cfc82803945a20200468263d0d, type: 3}

@@ -20,6 +20,10 @@ public class ButtleHub : MonoBehaviour
 
     public IEnumerator UpdateHP()
     {
-        yield return hpBar.SetHPSmooth((float)_monster.HP / _monster.MaxHp);
+        if(_monster.HpChanged)
+        {
+            yield return hpBar.SetHPSmooth((float)_monster.HP / _monster.MaxHp);
+            _monster.HpChanged = false; //HP‚ª•Ï‰»‚µ‚½‚±‚Æ‚ðƒŠƒZƒbƒg
+        }
     }
 }

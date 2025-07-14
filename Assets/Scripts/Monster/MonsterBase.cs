@@ -1,7 +1,5 @@
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.UI;
 
 // モンスターのマスターデータ : 外部から変更しない（インスペクターだけ変更可能）
 [CreateAssetMenu]
@@ -85,6 +83,9 @@ public enum MonsterType
     Rock,
     Ghost,
     Dragon,
+    Dark,
+    Steel,
+    Fairy, 
 }
 
 public enum Stat
@@ -105,15 +106,28 @@ public class TypeChart
 {
     static float[][] chart =
     {
-        //攻撃\防御          NOR  FIR  WAT  ELE  GRS  ICE  FIG  POI
-        /* NOR */new float[]{1f,  1f,  1f,  1f,  1f,  1f,  1f,  1f},
-        /* FIR */new float[]{1f,0.5f,0.5f,  1f,  2f,  2f,  1f,  1f},
-        /* WAT */new float[]{1f,  2f,0.5f,  1f,0.5f,  1f,  1f,  1f},
-        /* ELE */new float[]{1f,  1f,  2f,0.5f,0.5f,  1f,  1f,  1f},
-        /* GRS */new float[]{1f,0.5f,  2f,  1f,0.5f,  1f,  1f,0.5f},
-        /* ICE */new float[]{1f,0.5f,0.5f,  1f,  2f,0.5f,  1f,  1f},
-        /* FIG */new float[]{2f,  1f,  1f,  1f,  1f,  2f,  1f,0.5f},
-        /* POI */new float[]{1f,  1f,  1f,  1f,  2f,  1f,  1f,0.5f},
+        //攻撃\防御          NOR  FIR  WAT  ELE  GRS  ICE  FIG  POI  GRO  FLY  PSY  BUG  CRG  GST  DRG  DRK  STL  FRL
+        /* NOR */new float[]{1f,  1f,  1f,  1f,  1f,  1f,  1f,  1f,  1f,  1f,  1f,  1f,  0.5f, 0f,  1f,  1f, 0.5f, 1f},  
+        /* FIR */new float[]{1f,0.5f,0.5f,  1f,  2f,  2f,  1f,  1f,  1f,  1f,  1f,  2f,  0.5f, 1f, 0.5f, 1f,  2f,  1f},
+        /* WAT */new float[]{1f,  2f,0.5f,  1f,0.5f,  1f,  1f,  1f,  2f,  1f,  1f,  1f,  2f,  1f,  0.5f, 1f,  1f,  1f},
+        /* ELE */new float[]{1f,  1f,  2f,0.5f,0.5f,  1f,  1f,  1f,  0f,  2f,  1f,  1f,  1f,  1f,  0.5f, 1f,  1f,  1f},
+        /* GRS */new float[]{1f,0.5f,  2f,  1f,0.5f,  1f,  1f,0.5f,  2f, 0.5f, 1f, 0.5f, 2f,  1f, 0.5f,  1f, 0.5f, 1f},
+        /* ICE */new float[]{1f,0.5f,0.5f,  1f,  2f,0.5f,  1f,  1f,  1f,  2f,  1f,  1f,  1f,  1f,  2f, 1f,  0.5f, 1f},
+        /* FIG */new float[]{2f,  1f,  1f,  1f,  1f,  2f,  1f,0.5f, 1f, 0.5f,0.5f, 0.5f,  2f, 0f,  1f, 2f, 2f, 0.5f},
+        /* POI */new float[]{1f,  1f,  1f,  1f,  2f,  1f,  1f,0.5f, 0.5f, 1f, 1f, 1f,  0.5f,0.5f, 1f, 1f, 0f, 1f},
+        /* GRO */new float[]{1f,  2f,  1f,  2f,  0.5f, 1f, 1f, 2f,  1f, 0f, 1f, 0.5f,  1f, 1f, 1f, 1f, 2f, 1f},
+        /* FLY */new float[]{1f,  1f,  1f,  1f,  2f, 1f, 2f, 1f,  1f, 1f, 1f, 2f, 1f, 1f, 1f, 1f, 0.5f, 1f},
+        /* PSY */new float[]{1f,  1f,  1f,  1f,  1f, 1f, 2f, 1f, 1f, 1f,0.5f,1f,  1f, 1f, 1f, 0f,0.5f, 1f},
+        /* BUG */new float[]{1f,  0.5f, 1f,  1f,  2f, 1f, 0.5f, 0.5f, 1f, 0.5f, 2f, 1f,  1f, 0.5f, 1f, 2f,0.5f, 1f},
+        /* CRG */new float[]{1f,  2f, 1f,  1f,  1f, 2f, 0.5f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f,0.5f, 2f},
+        /* GST */new float[]{0f,  1f, 1f,  1f,  1f, 1f, 1f, 1f, 1f, 1f, 2f, 1f, 1f, 2f, 1f, 0.5f,0.5f, 1f},
+        /* DRG */new float[]{1f,  1f, 1f,  1f,  1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f, 2f, 1f,0.5f, 0f},
+        /* DRK */new float[]{1f,  1f, 1f,  1f,  1f, 1f,0.5f,1f, 1f, 1f, 2f, 1f, 1f, 2f, 1f,0.5f,1f, 1f},
+        /* STL */new float[]{1f,  0.5f,0.5f,0.5f,1f,2f,2f,1f,1f,1f,1f,1f,1f,1f,1f,1f,0.5f,2f},
+        /* FRL */new float[]{1f,  0.5f, 1f,  1f,  1f, 1f, 1f, 1f, 1f, 1f,1f,1f,1f, 1f, 1f, 1f,0.5f,1f},
+
+
+
     };
 
     public static float GetEffectivenss(MonsterType attackType, MonsterType defenseType)

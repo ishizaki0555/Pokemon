@@ -14,10 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   name: "\u30B5\u30F3\u30BF"
   description: "\u3068\u3042\u308B\u65E5\u306B\u5B50\u4F9B\u305F\u3061\u306B\u5922\u3068\u5E0C\u671B\u3092\u9001\u3063\u3066\u304F\u308C\u308B\u8B0E\u306E\u304A\u3058\u3044\u3055\u3093\u3002\u3044\u308D\u3093\u306A\u4EBA\u304B\u3089\u306F\u30B5\u30F3\u30BF\u3055\u3093\u3068\u3044\u3046\u611B\u79F0\u3067\u547C\u3070\u308C\u3066\u3044\u308B\u3002"
-  level: 20
-  exp: 0
+  level: 22
+  exp: 3584
   basicExp: 5000
-  necessaryExp: 4960
+  necessaryExp: 6601
   frontSprite: {fileID: 844163316, guid: 3d56dc214e12bdd4da6da607a49b73b0, type: 3}
   backSprite: {fileID: 125836270, guid: 3d56dc214e12bdd4da6da607a49b73b0, type: 3}
   type1: 6
@@ -35,3 +35,5 @@ MonoBehaviour:
     lavel: 10
   - _base: {fileID: 11400000, guid: 67cd5e2c40fe1764198201a2846f9b31, type: 2}
     lavel: 15
+  - _base: {fileID: 11400000, guid: 180a0352701cd594496ddf10b6029795, type: 2}
+    lavel: 1

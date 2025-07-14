@@ -18,4 +18,11 @@ MonoBehaviour:
   power: 34
   accuracy: 100
   pp: 7
+  category: 0
+  effects:
+    boosts:
+    - stat: 0
+      boost: -2
+    status: 0
+  target: 0
   attackSE: {fileID: 8300000, guid: 43742189b434600498b9ccf612388969, type: 3}
