@@ -1,33 +1,38 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Assertions.Must;
-using UnityEngine.Events;
+using System;
+using UnityEditor;
 
 public enum BattleState
 {
     Start,
-    PlayerAction, //行動選択
-    PlayerMove, //技選択
-    EnemyMove,
-    Busy,
+    ActionSelection, //行動選択
+    MoveSelection, //技選択
+    PerformMove, //敵の技選択
+    Busy, //処理中
+    partyScreen, //モンスター選択
+    BattleOver //バトル終了
 }
 
 public class BattleSystem : MonoBehaviour
 {
     [SerializeField] buttleUnit playerUnit;
     [SerializeField] buttleUnit enemyUnit;
-    [SerializeField] ButtleHub playerHub;
-    [SerializeField] ButtleHub enemyHub;
     [SerializeField] BattleDialogBox dialogBox;
-    public UnityAction BattleOver;
+    [SerializeField] PartyScreen partyScreen;
+
+    public event Action<bool> OnBattleOver;
 
     [SerializeField] EXPbar expBar;
 
 
     BattleState state;
+
     int currentAction; //0:Fight, 1:Run
     int currentMove; //0:左上, 1:右上, 2:左下, 3:右下　の技
+    int currentMember; //選択中のモンスターのインデックス
+
     [SerializeField] AudioSource audio;
     [SerializeField] AudioClip RunSE;
     [SerializeField] AudioClip LevelUpSE;
@@ -52,6 +57,7 @@ public class BattleSystem : MonoBehaviour
         }
         expBar.SetEXP((float)playerUnit.Monster.Base.Exp / (float)playerUnit.Monster.Base.NecessaryExp);
     }
+
     IEnumerator SetupBattle()
     {
         state = BattleState.Start;
@@ -59,66 +65,151 @@ public class BattleSystem : MonoBehaviour
         playerUnit.Setup(playerParty.GetHealthyMonster());
         enemyUnit.Setup(wildMonster);
 
-        //HUDの描画
-        playerHub.SetData(playerUnit.Monster);
-        enemyHub.SetData(enemyUnit.Monster);
+        partyScreen.Init();
+
         dialogBox.SetMoveNames(playerUnit.Monster.Moves);
         dialogBox.EnableActionSelector(false);
         yield return dialogBox.TypeDialog($"やせいの {enemyUnit.Monster.Base.Name} あらわれた！");
 
         // プレイヤーの行動選択へ
-        PlayerAction();
+        ChooseFierTurn();
     }
 
-    void PlayerAction()
+    void ChooseFierTurn()
     {
-        state = BattleState.PlayerAction;
-        dialogBox.EnableActionSelector(true);
-        StartCoroutine(dialogBox.TypeDialog("どうする？"));
+        if (playerUnit.Monster.Speed >= enemyUnit.Monster.Speed)
+            ActionSelection();
+        else
+            StartCoroutine(EnemyMove());
     }
-    void PlayerMove()
+
+    void BattleOver(bool won)
     {
-        state = BattleState.PlayerMove;
+        state = BattleState.BattleOver;
+        playerParty.Monsters.ForEach(p => p.OnBattleOver());
+        OnBattleOver(won);
+    }
+
+    void ActionSelection()
+    {
+        state = BattleState.ActionSelection;
+        dialogBox.EnableActionSelector(true);
+        dialogBox.SetDialog("どうする？");
+    }
+
+    void OpenMonsterScreen()
+    {
+        state = BattleState.partyScreen;
+        partyScreen.SetPartyData(playerParty.Monsters);
+        partyScreen.gameObject.SetActive(true);
+    }
+
+    void MoveSelection()
+    {
+        state = BattleState.MoveSelection;
         dialogBox.EnableDialogText(false);
         dialogBox.EnableActionSelector(false);
         dialogBox.EnableMoveSelector(true);
     }
     //PlayerMoveの実行
-    IEnumerator PerformPlayerMove()
+    IEnumerator PlayerMove()
     {
-        state = BattleState.Busy;
+        state = BattleState.PerformMove;
 
         //技の決定
         Move move = playerUnit.Monster.Moves[currentMove];
+        yield return StartCoroutine(RunMove(playerUnit, enemyUnit, move));
+
+        // もし戦闘状態がPerformMoveならば、敵の技を実行する
+        if (state == BattleState.PerformMove)
+            StartCoroutine(EnemyMove());
+
+    }
+
+    IEnumerator EnemyMove()
+    {
+        state = BattleState.PerformMove;
+
+        //技の決定：ランダム
+        Move move = enemyUnit.Monster.GetRandomMove();
+        yield return RunMove(enemyUnit, playerUnit, move);
+
+        if (state == BattleState.PerformMove)
+            ActionSelection();
+    }
+
+    //レベルの加算と必要経験値の再計算/データの適用
+    //IEnumerator LevelUp()
+    //{
+    //    yield return new WaitForSeconds(0.7f);
+    //    playerUnit.Monster.Base.Level++;
+    //    playerUnit.Monster.Base.NecessaryExp = Mathf.Floor(Mathf.Pow(playerUnit.Monster.Base.Level, 3) * (24 + Mathf.Floor((playerUnit.Monster.Base.Level + 1) / 3)) / 50);
+    //    playerUnit.Monster.Base.Exp = 0;
+    //    expBar.SetEXP(playerUnit.Monster.Base.Exp / playerUnit.Monster.Base.NecessaryExp);
+    //    playerHub.SetData(playerUnit.Monster);
+    //    //playerUnit.UpdatAwake();
+    //    playerHub.SetData(playerUnit.Monster);
+    //    audio.PlayOneShot(LevelUpSE);
+    //    yield return dialogBox.TypeDialog($"{playerUnit.Monster.Base.Name}は{playerUnit.Monster.Base.Level}に上がった！");
+    //}
+
+    ////溢れた経験値の計算
+    //float OverGetExp()
+    //{
+    //    float overExp = playerUnit.Monster.Base.Exp - playerUnit.Monster.Base.NecessaryExp;
+    //    return overExp;
+    //}
+
+    ////経験値の加算
+    //float GetExp()
+    //{
+    //    playerUnit.Monster.Base.Exp += enemyUnit.Monster.Base.BasicExp / 1 * enemyUnit.Monster.Base.Level / 7 * 1 * 1 / 1;
+    //    return enemyUnit.Monster.Base.BasicExp / 1 * enemyUnit.Monster.Base.Level / 7 * 1 * 1 / 1;
+    //}
+
+    
+
+    IEnumerator RunMove(buttleUnit sourceUnit, buttleUnit targetUnit, Move move  )
+    {
         move.PP--;
 
-        yield return dialogBox.TypeDialog($"{playerUnit.Monster.Base.Name}は{move.Base.Name}をつかった");
-        playerUnit.PlayerAttackAnimation();
-        audio.PlayOneShot(move.Base.AttackSE);
-        yield return new WaitForSeconds(0.7f);
-        enemyUnit.PlayerHitanimation();
+        yield return dialogBox.TypeDialog($"{sourceUnit.Monster.Base.Name}は{move.Base.Name}をつかった");
 
-        //ダメージ計算
-        DamageDetails damageDetails = enemyUnit.Monster.TakeDamage(move, playerUnit.Monster);
-        //HP反映
-        yield return enemyHub.UpdateHP();
-        //相性/クリティカルのメッセージ
-        yield return ShowDamageDetails(damageDetails);
-        //相手が戦闘不能ならメッセージを出して、経験値の更新
-        if (damageDetails.Fainted)
+        sourceUnit.PlayerAttackAnimation();
+        audio.PlayOneShot(move.Base.AttackSE);
+
+        yield return new WaitForSeconds(0.7f);
+        
+        targetUnit.PlayerHitanimation();
+
+        if(move.Base.Category == MoveCategory.Status)
         {
-            yield return dialogBox.TypeDialog($"{enemyUnit.Monster.Base.Name} はたおれた！");
-            enemyUnit.PlayerFaintanimation();
+            yield return RunMoveEffects(move, sourceUnit.Monster, targetUnit.Monster);
+        }
+        else
+        {
+            //ダメージ計算
+            DamageDetails damageDetails = targetUnit.Monster.TakeDamage(move, sourceUnit.Monster);
+            //HP反映
+            yield return targetUnit.Hub.UpdateHP();
+            //相性/クリティカルのメッセージ
+            yield return ShowDamageDetails(damageDetails);
+        } 
+        //相手が戦闘不能ならメッセージを出して、経験値の更新
+        if (targetUnit.Monster.HP <= 0)
+        {
+            yield return dialogBox.TypeDialog($"{targetUnit.Monster.Base.Name} はたおれた！");
+            targetUnit.PlayerFaintanimation();
             yield return new WaitForSeconds(0.7f);
-            float exp = GetExp();
+            /*float exp = GetExp();
             yield return dialogBox.TypeDialog($"{playerUnit.Monster.Base.Name}は経験値 " + exp + "を手に入れた！");
             yield return StartCoroutine(expBar.SetEXPSmooth(Mathf.Clamp((float)playerUnit.Monster.Base.Exp, 0, playerUnit.Monster.Base.NecessaryExp) / playerUnit.Monster.Base.NecessaryExp, exp));
-            if(playerUnit.Monster.Base.NecessaryExp <= playerUnit.Monster.Base.Exp) // レベルが上がった時
+            if (playerUnit.Monster.Base.NecessaryExp <= playerUnit.Monster.Base.Exp) // レベルが上がった時
             {
                 float overExp = OverGetExp();
                 yield return StartCoroutine(LevelUp());
                 //あふれた経験値：レベルが上がったらループする
-                while(overExp > 0)
+                while (overExp > 0)
                 {
                     playerUnit.Monster.Base.Exp += overExp;
                     yield return StartCoroutine(expBar.SetEXPSmooth(Mathf.Clamp((float)playerUnit.Monster.Base.Exp, 0, playerUnit.Monster.Base.NecessaryExp) / playerUnit.Monster.Base.NecessaryExp, exp));
@@ -133,103 +224,53 @@ public class BattleSystem : MonoBehaviour
                         overExp = 0;
                     }
                 }
-            }
+            }*/
             yield return new WaitForSeconds(0.7f);
-            BattleOver();
-        }
-        else
-        {
-            StartCoroutine(EnemyMove());
+            CheckForBattleOver(targetUnit);
         }
     }
 
-    //レベルの加算と必要経験値の再計算/データの適用
-    IEnumerator LevelUp()
+    IEnumerable RunMoveEffects(Move move, Monster source, Monster target)
     {
-        yield return new WaitForSeconds(0.7f);
-        playerUnit.Monster.Base.Level++;
-        playerUnit.Monster.Base.NecessaryExp = Mathf.Floor(Mathf.Pow(playerUnit.Monster.Base.Level, 3) * (24 + Mathf.Floor((playerUnit.Monster.Base.Level + 1) / 3)) / 50);
-        playerUnit.Monster.Base.Exp = 0;
-        expBar.SetEXP(playerUnit.Monster.Base.Exp / playerUnit.Monster.Base.NecessaryExp);
-        playerHub.SetData(playerUnit.Monster);
-        //playerUnit.UpdatAwake();
-        playerHub.SetData(playerUnit.Monster);
-        audio.PlayOneShot(LevelUpSE);
-        yield return dialogBox.TypeDialog($"{playerUnit.Monster.Base.Name}は{playerUnit.Monster.Base.Level}に上がった！");
-    }
-
-    //溢れた経験値の計算
-    float OverGetExp()
-    {
-        float overExp = playerUnit.Monster.Base.Exp - playerUnit.Monster.Base.NecessaryExp;
-        return overExp;
-    }
-
-    //経験値の加算
-    float GetExp()
-    {
-        playerUnit.Monster.Base.Exp += enemyUnit.Monster.Base.BasicExp / 1 * enemyUnit.Monster.Base.Level / 7 * 1 * 1 / 1;
-        return enemyUnit.Monster.Base.BasicExp / 1 * enemyUnit.Monster.Base.Level / 7 * 1 * 1 / 1;
-    }
-
-    IEnumerator EnemyMove()
-    {
-        state = BattleState.EnemyMove;
-
-        //技の決定：ランダム
-        Move move = enemyUnit.Monster.GetRandomMove();
-        move.PP--;
-        yield return dialogBox.TypeDialog($"{enemyUnit.Monster.Base.Name}は{move.Base.Name}をつかった");
-
-        //敵の攻撃アニメーション
-        enemyUnit.PlayerAttackAnimation();
-        audio.PlayOneShot(move.Base.AttackSE);
-        yield return new WaitForSeconds(0.7f);
-        playerUnit.PlayerHitanimation();
-
-        //ダメージ計算
-        DamageDetails damageDetails = playerUnit.Monster.TakeDamage(move, enemyUnit.Monster);
-        //HP反映
-        yield return playerHub.UpdateHP();
-
-        //相性/クリティカルのメッセージ
-        yield return ShowDamageDetails(damageDetails);
-        //戦闘不能ならメッセージ
-        if (damageDetails.Fainted)
+        var effects = move.Base.Effects;
+        if (move.Base.Effects.Boosts != null)
         {
-            yield return dialogBox.TypeDialog($"{playerUnit.Monster.Base.Name} はたおれた！");
-            playerUnit.PlayerFaintanimation();
+            if (move.Base.Target == Movetarget.Self)
+                source.ApplyBoost(effects.Boosts);
+            else
+                target.ApplyBoost(effects.Boosts);
+        }
 
-            yield return new WaitForSeconds(0.7f);
+
+        yield return ShowStatusChanges(source);
+        yield return ShowStatusChanges(target);
+    }
+
+    IEnumerator ShowStatusChanges(Monster monster)
+    {
+        while(monster.StatusChanges.Count > 0)
+        {
+            var message = monster.StatusChanges.Dequeue();
+            yield return dialogBox.TypeDialog(message);
+        }
+    }
+
+    void CheckForBattleOver(buttleUnit faintedUnit)
+    {
+        if(faintedUnit.IsPlayerUnit)
+        {
             var nextMonster = playerParty.GetHealthyMonster();
-            if(nextMonster != null)
+            if (nextMonster != null)
             {
-                state = BattleState.Start;
-                //モンスターの生成と描画
-                playerUnit.Setup(nextMonster);
-
-                //HUDの描画
-                playerHub.SetData(nextMonster);
-
-                dialogBox.SetMoveNames(nextMonster.Moves);
-                dialogBox.EnableActionSelector(false);
-
-                yield return dialogBox.TypeDialog($"いけ！{nextMonster.Base.name}!");
-
-                // プレイヤーの行動選択へ
-                PlayerAction();
+                OpenMonsterScreen();
             }
             else
-            {
-                BattleOver();
-            }
+                BattleOver(false);
         }
         else
-        {
-            // それ以外なら
-            PlayerAction();
-        }
+            BattleOver(true);
     }
+
 
     //急所などのメッセージ出力
     IEnumerator ShowDamageDetails(DamageDetails damageDetails)
@@ -250,35 +291,35 @@ public class BattleSystem : MonoBehaviour
 
     public  void HandleUpdate()
     {
-        if(state == BattleState.PlayerAction)
+        if(state == BattleState.ActionSelection)
         {
             HandleActionSelect();
         }
-        else if (state == BattleState.PlayerMove)
+        else if (state == BattleState.MoveSelection)
         {
             HandleMoveSelect();
         }
+        else if (state == BattleState.partyScreen)
+        {
+            HandlePartySelection();
+        }
     }
-    //プレイヤーの行動を処理する
+
+    /// <summary>
+    /// 行動選択の処理
+    /// </summary>
     void HandleActionSelect()
     {
-        //下を入力するとRun,上を入力するとFightになる
-        //0:Fight
-        //1:Run
-        if (Input.GetKeyDown(KeyCode.DownArrow))
-        {
-            if (currentAction < 1)
-            {
-                currentAction++;
-            }
-        }
-        if (Input.GetKeyDown(KeyCode.UpArrow))
-        {
-            if (currentAction > 0)
-            {
-                currentAction--;
-            }
-        }
+        if(Input.GetKeyDown(KeyCode.RightArrow))
+            currentAction++;
+        else if(Input.GetKeyDown(KeyCode.LeftArrow))
+            currentAction--;
+        else if (Input.GetKeyDown(KeyCode.DownArrow))
+            currentAction += 2;
+        else if (Input.GetKeyDown(KeyCode.UpArrow))
+            currentAction -= 2;
+
+        currentAction = Mathf.Clamp(currentAction, 0, 3); 
 
         //色でどちらを選択しているのか分かるようにする
         dialogBox.UpdateActionicon(currentAction);
@@ -287,9 +328,17 @@ public class BattleSystem : MonoBehaviour
         {
             if (currentAction == 0)
             {
-                PlayerMove();
+                MoveSelection();
             }
-            else if (currentAction == 1)
+            else if (currentAction == 1) // 道具
+            {
+
+            }
+            else if (currentAction == 2) // ポケモンを交換
+            {
+                OpenMonsterScreen();
+            }
+            else if (currentAction == 3) // 逃げる
             {
                 audio.PlayOneShot(RunSE);
                 dialogBox.EnableMoveSelector(false);
@@ -302,40 +351,25 @@ public class BattleSystem : MonoBehaviour
     {
         yield return dialogBox.TypeDialog($"うまく逃げられた！");
         yield return new WaitForSeconds(0.7f);
-        BattleOver();
+        OnBattleOver(false);
     }
 
-
+    /// <summary>
+    /// 技選択の処理
+    /// </summary>
     void HandleMoveSelect()
     {
         if (Input.GetKeyDown(KeyCode.RightArrow))
-        {
-            if (currentMove < playerUnit.Monster.Moves.Count - 1)
-            {
-                currentMove++;
-            }
-        }
-        if (Input.GetKeyDown(KeyCode.LeftArrow))
-        {
-            if (currentMove > 0)
-            {
-                currentMove--;
-            }
-        }
+            currentMove++;
+        else if (Input.GetKeyDown(KeyCode.LeftArrow))
+            currentMove--;
         else if (Input.GetKeyDown(KeyCode.DownArrow))
-        {
-            if (currentMove < playerUnit.Monster.Moves.Count - 2)
-            {
-                currentMove += 2;
-            }
-        }
+            currentMove += 2;
         else if (Input.GetKeyDown(KeyCode.UpArrow))
-        {
-            if (currentMove > 1)
-            {
-                currentMove -= 2;
-            }
-        }
+            currentMove -= 2;
+
+        currentAction = Mathf.Clamp(currentMove, 0, playerUnit.Monster.Moves.Count - 1);
+
         dialogBox.UpdateMoveSelection(currentMove, playerUnit.Monster.Moves[currentMove]);
 
         if(Input.GetKeyDown(KeyCode.Z))
@@ -349,12 +383,87 @@ public class BattleSystem : MonoBehaviour
             // 速度の速い順に処理を行う
             if (playerUnit.Monster.Speed > enemyUnit.Monster.Speed)
             {
-                StartCoroutine(PerformPlayerMove());
+                StartCoroutine(PlayerMove());
             }
             else
             {
                 StartCoroutine(EnemyMove());
             }
         }
+        else if(Input.GetKeyDown(KeyCode.X))
+        {
+            //技選択のUIを非表示
+            dialogBox.EnableMoveSelector(false);
+            //メッセージの復活
+            dialogBox.EnableDialogText(true);
+            //行動選択へ戻る
+            ActionSelection();
+        }
+    }
+
+    void HandlePartySelection()
+    {
+        if (Input.GetKeyDown(KeyCode.RightArrow))
+            currentMember++;
+        else if (Input.GetKeyDown(KeyCode.LeftArrow))
+            currentMember--;
+        else if (Input.GetKeyDown(KeyCode.DownArrow))
+            currentMember += 2;
+        else if (Input.GetKeyDown(KeyCode.UpArrow))
+            currentMember -= 2;
+
+        currentAction = Mathf.Clamp(currentMember, 0, playerParty.Monsters.Count - 1);
+
+        partyScreen.UpdataMenberSelection(currentMember);
+
+        if (Input.GetKeyDown(KeyCode.Z))
+        {
+            var selectedMenber = playerParty.Monsters[currentMember];
+            if (selectedMenber.HP <= 0)
+            {
+                partyScreen.SetMassageText("このポケモンはもう戦えない！");
+                return;
+            }
+            if(selectedMenber == playerUnit.Monster)
+            {
+                partyScreen.SetMassageText("このポケモンはもう戦えない！");
+                return;
+            }
+
+            partyScreen.gameObject.SetActive(false);
+            state = BattleState.Busy;
+            StartCoroutine(SwitchMonster(selectedMenber));
+        }
+        else if(Input.GetKeyDown(KeyCode.X))
+        {
+            //モンスター選択のUIを非表示
+            partyScreen.gameObject.SetActive(false);
+            //行動選択へ戻る
+            ActionSelection();
+        }
+    }   
+    
+    IEnumerator SwitchMonster(Monster newMonster)
+    {
+        bool curentMonsterFainted = true;
+        if (playerUnit.Monster.HP > 0)
+        {
+            curentMonsterFainted = false;
+            yield return dialogBox.TypeDialog($"戻ってこい、{playerUnit.Monster.Base.name}!");
+            playerUnit.PlayerFaintanimation();
+            yield return new WaitForSeconds(2f);
+        }
+
+        //モンスターの生成と描画
+        playerUnit.Setup(newMonster);
+        dialogBox.SetMoveNames(newMonster.Moves);
+        yield return dialogBox.TypeDialog($"いけ！{newMonster.Base.name}!");
+
+        if(curentMonsterFainted)
+            //もし選択したモンスターが戦闘不能ならば、敵の技を実行する
+            ChooseFierTurn();
+        else
+            //もし選択したモンスターが戦闘不能でなければ、プレイヤーの技を実行する
+            StartCoroutine(EnemyMove());        
     }
 }

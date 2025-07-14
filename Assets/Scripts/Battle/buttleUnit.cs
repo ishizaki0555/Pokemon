@@ -6,8 +6,14 @@ using TMPro.EditorUtilities;
 public class buttleUnit : MonoBehaviour
 {
     [SerializeField] bool isPlayerUnit;
+    [SerializeField] ButtleHub hub;
+    public bool IsPlayerUnit
+    {
+        get { return isPlayerUnit; }
+    }
 
     public Monster Monster { get; set; }
+    public ButtleHub Hub { get => hub;}
 
     Vector3 originalPos;
     Color originalColor;
@@ -43,6 +49,10 @@ public class buttleUnit : MonoBehaviour
         {
             image.sprite = Monster.Base.FrontSprite;
         }
+
+        hub.SetData(monster);
+
+
         image.color = originalColor;
         PlayEnterAnimation();
     }

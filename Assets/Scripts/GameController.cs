@@ -33,7 +33,7 @@ public class GameController : MonoBehaviour
     private void Start()
     {
         playerController.OnEncounted += StartAnimSet;
-        battleSystem.BattleOver += EndBattle;
+        battleSystem.OnBattleOver += EndBattle;
         grid = new GameObject[rows, cols];
         GenerateGrid();
     }
@@ -100,7 +100,7 @@ public class GameController : MonoBehaviour
         yield return new WaitForSeconds(animationDelay);
     }
 
-    public void EndBattle()
+    public void EndBattle(bool won)
     {
         state = GameState.FreeRoam;
         battleSystem.gameObject.SetActive(false);

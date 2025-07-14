@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 [System.Serializable]
@@ -27,12 +28,13 @@ public class Monster
 
     //使える技
     public List<Move> Moves { get; set; }
+    public Dictionary<Stat, int> Stats { get; private set; } 
+    public Dictionary<Stat, int > StatBoosts { get; private set; } //ステータスの上昇値
+    public Queue<string> StatusChanges { get; private set; } = new Queue<string>(); //ステータスの変化を記録するキュー 
 
     //コンストラクター：生成時の初期設定
     public void Init()
     {
-        HP = MaxHp;
-
         Moves = new List<Move>();   
 
         //使える技の設定：覚える技のレベル以上なら、Movesに追加
@@ -49,16 +51,82 @@ public class Monster
                 break;
             }
         }
+        CalculateStats();
+
+        HP = MaxHp;
+
+        ResetStatBoost();
     }
+
+    void CalculateStats()
+    {
+        //ステータスの計算
+        Stats = new Dictionary<Stat, int>();
+        Stats.Add(Stat.Attack, Mathf.FloorToInt((Base.Attack * Level) / 100f) + 5);
+        Stats.Add(Stat.Defense, Mathf.FloorToInt((Base.Defense * Level) / 100f) + 5);
+        Stats.Add(Stat.SpAttack, Mathf.FloorToInt((Base.SpAttack * Level) / 100f) + 5);
+        Stats.Add(Stat.SpDefense, Mathf.FloorToInt((Base.SpDefense* Level) / 100f) + 5);
+        Stats.Add(Stat.Speed, Mathf.FloorToInt((Base.Speed * Level) / 100f) + 5);
+
+
+        MaxHp = Mathf.FloorToInt((Base.MaxHP * Level) / 100f) + 10; //最大HPの計算
+    }
+
+    void ResetStatBoost()
+    {
+        //ステータスの上昇値をリセット
+        StatBoosts = new Dictionary<Stat, int>()
+        {
+            { Stat.Attack, 0 },
+            { Stat.Defense, 0 },
+            { Stat.SpAttack, 0 },
+            { Stat.SpDefense, 0 },
+            { Stat.Speed, 0 }
+        };
+    }
+
+    int GetStat(Stat stat)
+    {
+        //ステータスの取得
+        int statVal = Stats[stat];
+
+        int boost = StatBoosts[stat];
+        var boostValues = new float[] { 1f, 1.5f, 2f, 2.5f, 3f, 3.5f, 4f}; //ステータスの上昇値に応じた倍率
+
+        if(boost >= 0)
+            statVal = Mathf.FloorToInt( statVal * boostValues[boost]);
+        else
+            statVal = Mathf.FloorToInt(statVal / boostValues[boost]);
+
+        return statVal;
+    }
+
+    public void ApplyBoost(List<StatBoost> statBoosts)
+    {
+        foreach (var statBoost in statBoosts)
+        {
+            var stat = statBoost.stat;   
+            var boost = statBoost.boost;
+
+            StatBoosts[stat] = Mathf.Clamp(StatBoosts[stat] + boost, -6, 6);
+
+            if(boost > 0)
+                StatusChanges.Enqueue($"{Base.Name}'s {stat} rose!");
+            else if (boost < 0)
+                StatusChanges.Enqueue($"{Base.Name}'s {stat} fell!");                                                                                                                                                                                                                                   
+            Debug.Log($"{stat} has been bossted to {StatBoosts[stat]}");
+        }
+    }
+
 
     //levelに応じたステータスを返すもの:プロパティ(処理を加えることが出来る)
     //プロパティ
-    public int Attack{get { return Mathf.FloorToInt((Base.Attack * Level) / 100f) + 5; }}
-    public int Defense{get { return Mathf.FloorToInt((Base.Defense * Level) / 100f) + 5; }}
-    public int SpAttack{get { return Mathf.FloorToInt((Base.SpAttack * Level) / 100f) + 5; }}
-    public int SpDefense{get { return Mathf.FloorToInt((Base.SpDefense * Level) / 100f) + 5; }}
-    public int Speed{get { return Mathf.FloorToInt((Base.Speed * Level) / 100f) + 5; }}
-    public int MaxHp{get { return Mathf.FloorToInt((Base.MaxHP * Level) / 100f) + 10; }}
+    public int Attack{ get { return GetStat(Stat.Attack); } }
+    public int Defense{get { return GetStat(Stat.Defense); } }
+    public int SpAttack{get { return GetStat(Stat.SpAttack); ; }}
+    public int SpDefense{get { return GetStat(Stat.SpDefense); } }
+    public int Speed{get { return GetStat(Stat.Speed); } }
+    public int MaxHp{ get; private set; }
 
     //3つの情報を渡す
     //・戦闘不能
@@ -80,8 +148,8 @@ public class Monster
             TypeEffectiveness = type,
         };
 
-        float attack = (move.Base.IsPhysical) ?  attaker.Attack : attaker.SpAttack; //物理技か特殊技かで攻撃力を変える
-        float defense = (move.Base.IsPhysical) ? SpDefense : Defense; //物理技か特殊技かで防御力を変える
+        float attack = (move.Base.Category == MoveCategory.Special) ?  attaker.Attack : attaker.SpAttack; //物理技か特殊技かで攻撃力を変える
+        float defense = (move.Base.Category == MoveCategory.Special) ? SpDefense : Defense; //物理技か特殊技かで防御力を変える
 
         float modifiers = Random.Range(0.85f, 1f) * type * critical;
         float a = (2 * attaker.Level + 10) / 250f;
@@ -100,6 +168,11 @@ public class Monster
     {
         int r = Random.Range(0, Moves.Count);
         return Moves[r];
+    }
+
+    public void OnBattleOver()
+    {
+        ResetStatBoost();
     }
 }
 

@@ -18,11 +18,13 @@ public class MoveBase : ScriptableObject
     [SerializeField] int power; //技の威力
     [SerializeField] int accuracy; //正確性
     [SerializeField] int pp; //技の使用回数（PP）: 0以下は無効
+    [SerializeField] MoveCategory category; //技のカテゴリ（物理、特殊、変化技）: 物理技は攻撃力を使う、特殊技は特攻を使う、変化技はステータスを変える 
+    [SerializeField] MoveEffects effects; //技の効果: ステータスの上昇値などを含む
+    [SerializeField] Movetarget target; //技の対象: 自分、相手などを指定するための列挙型（Movetarget）
+
     [SerializeField] AudioClip attackSE; //技の効果音
-    [SerializeField] private bool isPhysical; //物理技か特殊技か
 
 
-    [SerializeField] MoveEffects effects; //技の効果
 
     //他のファイルから参照するためにプロパティを使う
     public string Name { get => name; } 
@@ -32,33 +34,39 @@ public class MoveBase : ScriptableObject
     public int Accuracy { get => accuracy; }
     public int PP { get => pp; }
     public AudioClip AttackSE { get => attackSE; }
-    public MoveEffects Effects { get => effects; }
-    public bool IsPhysical {
-        get
-        {
-            if(type == MonsterType.Fire || type == MonsterType.Water || type == MonsterType.Grass || type == MonsterType.Electric || type == MonsterType.Dragon)
-            {
-                return true; 
-            }
-            else
-            {
-                return false;
-            }
-        }
-    }
+
+    public MoveCategory Category { get => category; }
+    public MoveEffects Effects { get => effects;  }
+    public Movetarget Target { get => target; }
 }
 
 [System.Serializable]
 public class MoveEffects
 {
+    [SerializeField] List<StatBoost> boosts; //ステータスの上昇値
 
-    [SerializeField] ConditionID status;
-
-    public ConditionID Status { get => status; }
+    public List<StatBoost> Boosts
+    {
+        get { return boosts; }
+    }
 }
 
-[Serializable]
-public class  StatBoost
+[System.Serializable]
+public class StatBoost
 {
-    
+    public Stat stat; //ステータスの種類
+    public int boost; //上昇値
+}
+
+public enum MoveCategory
+{
+    Physical, //物理技
+    Special, //特殊技
+    Status //変化技
+}
+
+public enum Movetarget
+{
+    Foe, //相手
+    Self //自分
 }

@@ -86,6 +86,17 @@ public enum MonsterType
     Ghost,
     Dragon,
 }
+
+public enum Stat
+{
+    Attack, //•¨—UŒ‚
+    Defense, //•¨—–hŒä
+    SpAttack, //“ÁêUŒ‚
+    SpDefense, //“Áê–hŒä
+    Speed, //‘f‘‚³
+}
+
+
 //‚â‚è‚½‚¢‚±‚Æ
 //E‹Z‚Ìˆ¤ÌŒvZ
 //EƒNƒŠƒeƒBƒJƒ‹ƒqƒbƒg
