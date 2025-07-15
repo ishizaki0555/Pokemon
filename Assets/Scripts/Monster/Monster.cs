@@ -117,10 +117,7 @@ public class Monster
 
             StatBoosts[stat] = Mathf.Clamp(StatBoosts[stat] + boost, -6, 6);
 
-            if(boost > 0)
-                StatusChanges.Enqueue($"{Base.Name}'s {stat} rose!");
-            else
-                StatusChanges.Enqueue($"{Base.Name}‚Ì {stat} ‚ª—‚¿‚½I");
+            Debug.Log($"{Base.Name}‚Ì{stat}‚ª{StatBoosts[stat]}’iŠKã¸‚µ‚½B");
         }
     }
 

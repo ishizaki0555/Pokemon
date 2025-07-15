@@ -158,8 +158,6 @@ public class BattleSystem : MonoBehaviour
         {
             //ダメージ計算
             DamageDetails damageDetails = targetUnit.Monster.TakeDamage(move, sourceUnit.Monster);
-            Debug.Log($"ダメージ: {damageDetails}"); //デバッグ用
-
             //HP反映
             yield return targetUnit.Hub.UpdateHP();
             //相性/クリティカルのメッセージ
@@ -190,7 +188,7 @@ public class BattleSystem : MonoBehaviour
     IEnumerable RunMoveEffects(Move move, Monster source, Monster target)
     {
         //技の効果を適用
-        MoveEffects effects = move.Base.Effects;
+        var effects = move.Base.Effects;
         if (effects.Boosts != null)
         {
             if (move.Base.Target == Movetarget.Self)
@@ -199,7 +197,7 @@ public class BattleSystem : MonoBehaviour
                 target.ApplyBoost(effects.Boosts);
         }
 
-        // 何かしらの状態異常技であれば
+        //ステータス異常の適用
         if (effects.Status != ConditionID.None)
         {
             target.SetStatus(effects.Status);
@@ -305,12 +303,12 @@ public class BattleSystem : MonoBehaviour
             {
                 audio.PlayOneShot(RunSE);
                 dialogBox.EnableMoveSelector(false);
-                StartCoroutine(RunMove());
+                StartCoroutine(MoveRun());
             }
         }
     }
 
-    IEnumerator RunMove()
+    IEnumerator MoveRun()
     {
         yield return dialogBox.TypeDialog($"うまく逃げられた！");
         yield return new WaitForSeconds(0.7f);
