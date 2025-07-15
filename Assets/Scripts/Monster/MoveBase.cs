@@ -15,9 +15,12 @@ public class MoveBase : ScriptableObject
     [SerializeField] MonsterType type; //技のタイプ
     [SerializeField] int power; //技の威力
     [SerializeField] int accuracy; //正確性
+    [SerializeField] bool alwaysHits;
     [SerializeField] int pp; //技の使用回数（PP）: 0以下は無効
+    [SerializeField] int prioity;
     [SerializeField] MoveCategory category; //技のカテゴリ（物理、特殊、変化技）: 物理技は攻撃力を使う、特殊技は特攻を使う、変化技はステータスを変える 
     [SerializeField] MoveEffects effects; //技の効果: ステータスの上昇値などを含む
+    [SerializeField] List<SecondaryEffects> secondaries;
     [SerializeField] Movetarget target; //技の対象: 自分、相手などを指定するための列挙型（Movetarget）
 
     [SerializeField] AudioClip attackSE; //技の効果音
@@ -30,12 +33,16 @@ public class MoveBase : ScriptableObject
     public MonsterType Type { get => type; }
     public int Power { get => power; }
     public int Accuracy { get => accuracy; }
+
+    public bool AlwaysHits{ get => alwaysHits; }
     public int PP { get => pp; }
+    public int Priority { get => prioity; }
     public AudioClip AttackSE { get => attackSE; }
 
     public MoveCategory Category { get => category; }
     public MoveEffects Effects { get => effects;  }
     public Movetarget Target { get => target; }
+    public List<SecondaryEffects> Secondaries { get => secondaries; }
 }
 
 [System.Serializable]
@@ -43,6 +50,7 @@ public class MoveEffects
 {
     [SerializeField] List<StatBoost> boosts; //ステータスの上昇値
     [SerializeField] ConditionID status;
+    [SerializeField] ConditionID volatileStatus;
 
     public List<StatBoost> Boosts
     {
@@ -52,6 +60,21 @@ public class MoveEffects
     {
         get { return status; }
     }
+
+    public ConditionID VolatileStatus
+    { 
+        get { return volatileStatus; }  
+    }
+}
+
+[System.Serializable]
+public class SecondaryEffects : MoveEffects
+{
+    [SerializeField] int chance;
+    [SerializeField] Movetarget target;
+
+    public int Chance { get => chance; }
+    public Movetarget Target { get => target; }
 }
 
 [System.Serializable]

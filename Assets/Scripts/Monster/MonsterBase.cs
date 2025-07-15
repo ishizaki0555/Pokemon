@@ -95,6 +95,10 @@ public enum Stat
     SpAttack, //特殊攻撃
     SpDefense, //特殊防御
     Speed, //素早さ
+
+    // この二つは実際のステータスではない
+    Accuracy,
+    Evasion
 }
 
 

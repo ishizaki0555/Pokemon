@@ -30,6 +30,11 @@ public class GameController : MonoBehaviour
  
     private GameObject[,] grid; // UI‚ÌƒOƒŠƒbƒh‚ğŠÇ—
 
+
+    private void Awake()
+    {
+        ConditionDB.Init();
+    }
     private void Start()
     {
         playerController.OnEncounted += StartAnimSet;

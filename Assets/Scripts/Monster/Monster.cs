@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using UnityEngine;
 
 [System.Serializable]
@@ -27,15 +29,23 @@ public class Monster
 
     //使える技
     public List<Move> Moves { get; set; }
+    public Move CurrentMove { get; set; }
 
     public Dictionary<Stat, int> Stats { get; private set; } 
 
     public Dictionary<Stat, int > StatBoosts { get; private set; } //ステータスの上昇値
-
-    public Queue<string> StatusChanges { get; private set; } = new Queue<string>(); //ステータスの変化を記録するキュー 
     public Condition Status { get; private set; } //状態異常
 
+    public int StatusTime { get; set; } //状態異常の持続時間
+
+    public Condition VolatileStatus { get; private set; } //状態異常
+    public int VolatileStatusTime { get; set; } //状態異常の持続時間
+
+    public Queue<string> StatusChanges { get; private set; } = new Queue<string>(); //ステータスの変化を記録するキュー 
+    
+
     public bool HpChanged { get; set; } //HPが変化したかどうか
+    public event System.Action OnStatusChanged;
 
 
     //コンストラクター：生成時の初期設定
@@ -62,6 +72,8 @@ public class Monster
         HP = MaxHp;
 
         ResetStatBoost();
+        Status = null;
+        VolatileStatus = null;
     }
 
     void CalculateStats()
@@ -75,7 +87,7 @@ public class Monster
         Stats.Add(Stat.Speed, Mathf.FloorToInt((Base.Speed * Level) / 100f) + 5);
 
 
-        MaxHp = Mathf.FloorToInt((Base.MaxHP * Level) / 100f) + 10; //最大HPの計算
+        MaxHp = Mathf.FloorToInt((Base.MaxHP * Level) / 100f) + 10 + Level; //最大HPの計算
     }
 
     void ResetStatBoost()
@@ -87,9 +99,10 @@ public class Monster
             { Stat.Defense, 0 },
             { Stat.SpAttack, 0 },
             { Stat.SpDefense, 0 },
-            { Stat.Speed, 0 }
+            { Stat.Speed, 0 },
+            { Stat.Accuracy, 0 },
+            { Stat.Evasion, 0 },
         };
-        Debug.Log("ステータスの上昇値をリセットしました。");
     }
 
     int GetStat(Stat stat)
@@ -117,6 +130,12 @@ public class Monster
 
             StatBoosts[stat] = Mathf.Clamp(StatBoosts[stat] + boost, -6, 6);
 
+            //ステータスの上昇値を表示
+            if (boost > 0)
+                StatusChanges.Enqueue($"{Base.Name}の{stat}が上がった！");
+            else
+                StatusChanges.Enqueue($"{Base.Name}の{stat}が下がった！");
+
             Debug.Log($"{Base.Name}の{stat}が{StatBoosts[stat]}段階上昇した。");
         }
     }
@@ -125,7 +144,7 @@ public class Monster
     //levelに応じたステータスを返すもの:プロパティ(処理を加えることが出来る)
     //プロパティ
     public int Attack{ get { return GetStat(Stat.Attack); } }
-    public int Defense{get { return GetStat(Stat.Defense); } }
+    public int Defense { get { return GetStat(Stat.Defense); } }
     public int SpAttack{get { return GetStat(Stat.SpAttack); ; }}
     public int SpDefense{get { return GetStat(Stat.SpDefense); } }
     public int Speed{get { return GetStat(Stat.Speed); } }
@@ -158,7 +177,6 @@ public class Monster
         float a = (2 * attaker.Level + 10) / 250f;
         float b = a * move.Base.Power * ((float)attack / defense) + 2;
         int damage = Mathf.FloorToInt(b * modifiers);
-        Debug.Log(damage);
 
         UpdateHP(damage); //HPを減らす
 
@@ -173,23 +191,69 @@ public class Monster
 
     public void SetStatus(ConditionID conditionId)
     {
+        if (Status != null) return;
+
         Status = ConditionDB.Conditions[conditionId]; // どの状態異常になるのか
+        Status?.OnStart?.Invoke(this); //状態異常の開始時の処理を呼び出す
         StatusChanges.Enqueue($"{Base.Name} {Status.StartMessage}"); //状態異常の開始メッセージをキューに追加
+        OnStatusChanged?.Invoke();
+    }
+
+    public void CureStatus()
+    {
+        Status = null; //状態異常を解除
+        OnStatusChanged?.Invoke();
+    }
+
+    public void SetVolatileStatus(ConditionID conditionId)
+    {
+        if (VolatileStatus != null) return;
+
+        VolatileStatus = ConditionDB.Conditions[conditionId]; // どの状態異常になるのか
+        VolatileStatus?.OnStart?.Invoke(this); //状態異常の開始時の処理を呼び出す
+        StatusChanges.Enqueue($"{Base.Name} {VolatileStatus.StartMessage}"); //状態異常の開始メッセージをキューに追加
+    }
+
+    public void CureVolatileStatus()
+    {
+        VolatileStatus = null; //状態異常を解除
     }
 
     public Move GetRandomMove()
     {
-        int r = Random.Range(0, Moves.Count);
+        var movesWithPP = Moves.Where(x => x.PP > 0).ToList();
+
+        int r = Random.Range(0, movesWithPP.Count);
         return Moves[r];
+    }
+
+    public bool OnBeforeMove()
+    {
+        bool canPerformMove = true;
+        //麻痺の効果を適用
+        if (Status?.OnBeforMove != null)
+        {
+            if(!Status.OnBeforMove(this))
+                canPerformMove = false;
+        }
+
+        if (VolatileStatus?.OnBeforMove != null)
+        {
+            if (!VolatileStatus.OnBeforMove(this))
+                canPerformMove = false;
+        }
+        return canPerformMove; //麻痺の効果がない場合はtrueを返す
     }
 
     public void OnAfterTurn()
     {
         Status?.OnAfterTurn?.Invoke(this);
+        VolatileStatus?.OnAfterTurn?.Invoke(this);
     }
 
     public void OnBattleOver()
     {
+        VolatileStatus = null;  
         ResetStatBoost();
     }
 }

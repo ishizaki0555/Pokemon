@@ -1,17 +1,26 @@
 using System.Collections;
 using UnityEngine;
 using System;
-
+using UnityEngine.UIElements;
+using Unity.VisualScripting;
+using System.Collections.Generic;
 
 public enum BattleState
 {
     Start,
     ActionSelection, //行動選択
     MoveSelection, //技選択
-    PerformMove, //敵の技選択
+    RunningTurn, //敵の技選択
     Busy, //処理中
     partyScreen, //モンスター選択
     BattleOver //バトル終了
+}
+public enum BattleAction
+{
+    Move,
+    SwitchMonster,
+    UseItem,
+    Run
 }
 
 public class BattleSystem : MonoBehaviour
@@ -23,10 +32,8 @@ public class BattleSystem : MonoBehaviour
 
     public event Action<bool> OnBattleOver;
 
-    [SerializeField] EXPbar expBar;
-
-
     BattleState state;
+    BattleState? prevState;
 
     int currentAction; //0:Fight, 1:Run
     int currentMove; //0:左上, 1:右上, 2:左下, 3:右下　の技
@@ -54,7 +61,6 @@ public class BattleSystem : MonoBehaviour
         {
             playerUnit.Monster.Base.NecessaryExp = Mathf.Floor(Mathf.Pow(playerUnit.Monster.Base.Level, 3) * (24 + Mathf.Floor((playerUnit.Monster.Base.Level + 1) / 3)) / 50);
         }
-        expBar.SetEXP((float)playerUnit.Monster.Base.Exp / (float)playerUnit.Monster.Base.NecessaryExp);
     }
 
     IEnumerator SetupBattle()
@@ -68,18 +74,10 @@ public class BattleSystem : MonoBehaviour
 
         dialogBox.SetMoveNames(playerUnit.Monster.Moves);
         dialogBox.EnableActionSelector(false);
-        yield return dialogBox.TypeDialog($"やせいの {enemyUnit.Monster.Base.Name} あらわれた！");
+        yield return dialogBox.TypeDialog($"やせいの{enemyUnit.Monster.Base.Name}あらわれた！");
 
         // プレイヤーの行動選択へ
-        ChooseFierTurn();
-    }
-
-    void ChooseFierTurn()
-    {
-        if (playerUnit.Monster.Speed >= enemyUnit.Monster.Speed)
-            ActionSelection();
-        else
-            StartCoroutine(EnemyMove());
+        ActionSelection();
     }
 
     void BattleOver(bool won)
@@ -110,67 +108,171 @@ public class BattleSystem : MonoBehaviour
         dialogBox.EnableActionSelector(false);
         dialogBox.EnableMoveSelector(true);
     }
-    //PlayerMoveの実行
-    IEnumerator PlayerMove()
+
+    IEnumerator RunTurns(BattleAction playerAction)
     {
-        state = BattleState.PerformMove;
+        state = BattleState.RunningTurn;
 
-        //技の決定
-        Move move = playerUnit.Monster.Moves[currentMove];
-        yield return StartCoroutine(RunMove(playerUnit, enemyUnit, move));
+        if(playerAction == BattleAction.Move)
+        {
+            playerUnit.Monster.CurrentMove = playerUnit.Monster.Moves[currentMove];
+            enemyUnit.Monster.CurrentMove = enemyUnit.Monster.GetRandomMove();
 
-        // もし戦闘状態がPerformMoveならば、敵の技を実行する
-        if (state == BattleState.PerformMove)
-            StartCoroutine(EnemyMove());
+            int playerMovePriority = playerUnit.Monster.CurrentMove.Base.Priority;
+            int enemyMovePriority = enemyUnit.Monster.CurrentMove.Base.Priority;
 
+            bool playerGoseFirst = true;
+            if (enemyMovePriority > playerMovePriority)
+                playerGoseFirst = false;
+            else if(enemyMovePriority == playerMovePriority)
+                playerGoseFirst = playerUnit.Monster.Speed >= enemyUnit.Monster.Speed;
+
+            var firstUnit = (playerGoseFirst) ? playerUnit: enemyUnit;
+            var secondUnit = (playerGoseFirst) ? enemyUnit: playerUnit;
+
+            var seconfMonster = secondUnit.Monster;
+
+            yield return RunMove(firstUnit, secondUnit, firstUnit.Monster.CurrentMove);
+            yield return RunAfterTurn(firstUnit);
+            if(state == BattleState.BattleOver) yield break;
+
+            if (seconfMonster.HP > 0)
+            {
+                yield return RunMove(secondUnit, firstUnit, secondUnit.Monster.CurrentMove);
+                yield return RunAfterTurn(secondUnit);
+                if (state == BattleState.BattleOver) yield break;
+            }
+        }
+        else
+        {
+            if(playerAction == BattleAction.SwitchMonster)
+            {
+                var selectedMonster = playerParty.Monsters[currentMember];
+                state = BattleState.Busy;
+                yield return SwitchMonster(selectedMonster);
+            }
+
+            var enemtMove = enemyUnit.Monster.GetRandomMove();
+            yield return RunMove(enemyUnit, playerUnit, enemtMove);
+            yield return RunAfterTurn(enemyUnit);
+            if (state == BattleState.BattleOver) yield break;
+        }
+
+        if (state != BattleState.BattleOver)
+            ActionSelection();
     }
-
     IEnumerator EnemyMove()
     {
-        state = BattleState.PerformMove;
+        state = BattleState.RunningTurn;
 
         //技の決定：ランダム
         Move move = enemyUnit.Monster.GetRandomMove();
         yield return RunMove(enemyUnit, playerUnit, move);
 
-        if (state == BattleState.PerformMove)
+        if (state == BattleState.RunningTurn)
             ActionSelection();
     }    
 
     IEnumerator RunMove(buttleUnit sourceUnit, buttleUnit targetUnit, Move move  )
     {
+        bool canRunMove = sourceUnit.Monster.OnBeforeMove(); //技を使う前の処理
+        if(!canRunMove)
+        {
+            yield return ShowStatusChanges(sourceUnit.Monster);
+            yield return sourceUnit.Hub.UpdateHP();
+            yield break;
+        }
+        yield return ShowStatusChanges(sourceUnit.Monster);
+
+
         move.PP--;
 
         yield return dialogBox.TypeDialog($"{sourceUnit.Monster.Base.Name}は{move.Base.Name}をつかった");
 
-        sourceUnit.PlayerAttackAnimation();
-        audio.PlayOneShot(move.Base.AttackSE);
-
-        yield return new WaitForSeconds(0.7f);
-        
-        targetUnit.PlayerHitanimation();
-
-        if(move.Base.Category == MoveCategory.Status)
+        if (CheckIfMoveHits(move, sourceUnit.Monster, targetUnit.Monster))
         {
-            yield return RunMoveEffects(move, sourceUnit.Monster, targetUnit.Monster);
+
+            sourceUnit.PlayerAttackAnimation();
+            audio.PlayOneShot(move.Base.AttackSE);
+
+            yield return new WaitForSeconds(0.7f);
+
+            targetUnit.PlayerHitanimation();
+
+            if (move.Base.Category == MoveCategory.Status)
+            {
+                yield return RunMoveEffects(move.Base.Effects, sourceUnit.Monster, targetUnit.Monster, move.Base.Target);
+            }
+            else
+            {
+                //ダメージ計算
+                DamageDetails damageDetails = targetUnit.Monster.TakeDamage(move, sourceUnit.Monster);
+                //HP反映
+                yield return targetUnit.Hub.UpdateHP();
+                //相性/クリティカルのメッセージ
+                yield return ShowDamageDetails(damageDetails);
+            }
+
+            if(move.Base.Secondaries != null && move.Base.Secondaries.Count > 0 && targetUnit.Monster.HP > 0)
+            {
+                foreach(var secondary in move.Base.Secondaries)
+                {
+                    var rnd = UnityEngine.Random.Range(1, 101);
+                    if(rnd <= secondary.Chance)
+                        yield return RunMoveEffects(secondary, sourceUnit.Monster, targetUnit.Monster, secondary.Target);
+                }
+            }
+
+            //相手が戦闘不能ならメッセージを出して、経験値の更新
+            if (targetUnit.Monster.HP <= 0)
+            {
+                yield return dialogBox.TypeDialog($"{targetUnit.Monster.Base.Name}はたおれた！");
+                targetUnit.PlayerFaintanimation();
+                yield return new WaitForSeconds(0.7f);
+                CheckForBattleOver(targetUnit);
+            }
         }
         else
         {
-            //ダメージ計算
-            DamageDetails damageDetails = targetUnit.Monster.TakeDamage(move, sourceUnit.Monster);
-            //HP反映
-            yield return targetUnit.Hub.UpdateHP();
-            //相性/クリティカルのメッセージ
-            yield return ShowDamageDetails(damageDetails);
-        } 
-        //相手が戦闘不能ならメッセージを出して、経験値の更新
-        if (targetUnit.Monster.HP <= 0)
-        {
-            yield return dialogBox.TypeDialog($"{targetUnit.Monster.Base.Name} はたおれた！");
-            targetUnit.PlayerFaintanimation();
-            yield return new WaitForSeconds(0.7f);
-            CheckForBattleOver(targetUnit);
+            yield return dialogBox.TypeDialog($"{sourceUnit.Monster.Base.Name}は攻撃を外した！");
         }
+
+        
+    }
+
+    IEnumerator RunMoveEffects(MoveEffects effects, Monster source, Monster target, Movetarget moveTarget)
+    {
+        // 技の効果を適用
+        if (effects.Boosts != null)
+        {
+            //技の効果を適用
+            if (moveTarget == Movetarget.Self) // 自分にかける技
+                source.ApplyBoost(effects.Boosts);
+            else
+                target.ApplyBoost(effects.Boosts); // 相手にかける技
+        }
+
+        // 状態異常の適用
+        if (effects.Status != ConditionID.None)
+        {
+            target.SetStatus(effects.Status); // 状態異常を設定
+        }
+
+        if (effects.VolatileStatus != ConditionID.None)
+        {
+            target.SetVolatileStatus(effects.VolatileStatus); // 状態異常を設定
+        }
+
+        yield return ShowStatusChanges(source);
+        yield return ShowStatusChanges(target);
+    }
+
+    IEnumerator RunAfterTurn(buttleUnit sourceUnit)
+    {
+        if (state == BattleState.BattleOver) yield break;
+        yield return new WaitUntil(() => state == BattleState.RunningTurn);
+
+        //技の効果を適用
         sourceUnit.Monster.OnAfterTurn(); //技を使った後の処理
         yield return ShowStatusChanges(sourceUnit.Monster);
         yield return sourceUnit.Hub.UpdateHP();
@@ -178,33 +280,36 @@ public class BattleSystem : MonoBehaviour
         //相手が戦闘不能ならメッセージを出して、経験値の更新
         if (sourceUnit.Monster.HP <= 0)
         {
-            yield return dialogBox.TypeDialog($"{sourceUnit.Monster.Base.Name} はたおれた！");
+            yield return dialogBox.TypeDialog($"{sourceUnit.Monster.Base.Name}はたおれた！");
             sourceUnit.PlayerFaintanimation();
             yield return new WaitForSeconds(0.7f);
             CheckForBattleOver(sourceUnit);
         }
     }
 
-    IEnumerable RunMoveEffects(Move move, Monster source, Monster target)
+    bool CheckIfMoveHits(Move move, Monster source, Monster target)
     {
-        //技の効果を適用
-        var effects = move.Base.Effects;
-        if (effects.Boosts != null)
-        {
-            if (move.Base.Target == Movetarget.Self)
-                source.ApplyBoost(effects.Boosts);
-            else
-                target.ApplyBoost(effects.Boosts);
-        }
+        if (move.Base.AlwaysHits)
+            return true;
 
-        //ステータス異常の適用
-        if (effects.Status != ConditionID.None)
-        {
-            target.SetStatus(effects.Status);
-        }
+        float moveAccuracy = move.Base.Accuracy;
 
-        yield return ShowStatusChanges(source);
-        yield return ShowStatusChanges(target);
+        int accuracy = source.StatBoosts[Stat.Accuracy];
+        int evasion = target.StatBoosts[Stat.Evasion];
+
+        var boostValues = new float[] { 1f, 4f / 3f, 5f / 3f, 2f, 7f / 3f, 8f / 3f, 3f };
+
+        if(accuracy > 0)
+            moveAccuracy *= boostValues[accuracy];
+        else
+            moveAccuracy /= boostValues[-accuracy];
+
+        if (evasion > 0)
+            moveAccuracy /= boostValues[evasion];
+        else
+            moveAccuracy *= boostValues[-evasion];
+
+        return UnityEngine.Random.Range(1, 101) <= moveAccuracy;
     }
 
     IEnumerator ShowStatusChanges(Monster monster)
@@ -297,6 +402,7 @@ public class BattleSystem : MonoBehaviour
             }
             else if (currentAction == 2) // ポケモンを交換
             {
+                prevState = state;
                 OpenMonsterScreen();
             }
             else if (currentAction == 3) // 逃げる
@@ -335,6 +441,9 @@ public class BattleSystem : MonoBehaviour
 
         if(Input.GetKeyDown(KeyCode.Z))
         {
+            var move = playerUnit.Monster.Moves[currentMove];
+            if (move.PP == 0) return;
+
             //技決定
             //・技選択のUIは非表示
             dialogBox.EnableMoveSelector(false);
@@ -342,14 +451,7 @@ public class BattleSystem : MonoBehaviour
             dialogBox.EnableDialogText(true);
             //・技決定の処理
             // 速度の速い順に処理を行う
-            if (playerUnit.Monster.Speed > enemyUnit.Monster.Speed)
-            {
-                StartCoroutine(PlayerMove());
-            }
-            else
-            {
-                StartCoroutine(EnemyMove());
-            }
+            StartCoroutine(RunTurns(BattleAction.Move));
         }
         else if(Input.GetKeyDown(KeyCode.X))
         {
@@ -392,8 +494,17 @@ public class BattleSystem : MonoBehaviour
             }
 
             partyScreen.gameObject.SetActive(false);
-            state = BattleState.Busy;
-            StartCoroutine(SwitchMonster(selectedMenber));
+
+            if(prevState == BattleState.ActionSelection)
+            {
+                prevState = null;
+                StartCoroutine(SwitchMonster(selectedMenber));
+            }
+            else
+            {
+                state = BattleState.Busy;
+                StartCoroutine(SwitchMonster(selectedMenber));
+            }
         }
         else if(Input.GetKeyDown(KeyCode.X))
         {
@@ -406,25 +517,17 @@ public class BattleSystem : MonoBehaviour
     
     IEnumerator SwitchMonster(Monster newMonster)
     {
-        bool curentMonsterFainted = true;
-        if (playerUnit.Monster.HP > 0)
+        if(playerUnit.Monster.HP > 0)
         {
-            curentMonsterFainted = false;
-            yield return dialogBox.TypeDialog($"戻ってこい、{playerUnit.Monster.Base.name}!");
+            yield return dialogBox.TypeDialog($"戻ってこい！{playerUnit.Monster.Base.Name}");
             playerUnit.PlayerFaintanimation();
             yield return new WaitForSeconds(2f);
         }
 
-        //モンスターの生成と描画
         playerUnit.Setup(newMonster);
-        dialogBox.SetMoveNames(newMonster.Moves);
-        yield return dialogBox.TypeDialog($"いけ！{newMonster.Base.name}!");
+        dialogBox.SetMoveNames(playerUnit.Monster.Moves);
+        yield return dialogBox.TypeDialog($"いけ！{newMonster.Base.Name}");
 
-        if(curentMonsterFainted)
-            //もし選択したモンスターが戦闘不能ならば、敵の技を実行する
-            ChooseFierTurn();
-        else
-            //もし選択したモンスターが戦闘不能でなければ、プレイヤーの技を実行する
-            StartCoroutine(EnemyMove());        
+        state = BattleState.RunningTurn;
     }
 }

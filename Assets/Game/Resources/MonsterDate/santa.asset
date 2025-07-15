@@ -29,7 +29,7 @@ MonoBehaviour:
   spDefense: 50
   speed: 100
   learnableMoves:
-  - _base: {fileID: 11400000, guid: bb937a1158edc494fa68caebc91e427a, type: 2}
+  - _base: {fileID: 11400000, guid: afeda8933fed24148ab52f02be6dd539, type: 2}
     lavel: 1
   - _base: {fileID: 11400000, guid: 3816ffe87e137ed43aa066cef1214649, type: 2}
     lavel: 10
