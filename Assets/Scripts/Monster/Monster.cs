@@ -161,6 +161,7 @@ public class Monster
         float a = (2 * attaker.Level + 10) / 250f;
         float b = a * move.Base.Power * ((float)attack / defense) + 2;
         int damage = Mathf.FloorToInt(b * modifiers);
+        Debug.Log(damage);
 
         UpdateHP(damage); //HPを減らす
 
@@ -175,7 +176,7 @@ public class Monster
 
     public void SetStatus(ConditionID conditionId)
     {
-        Status = ConditionDB.Conditions[conditionId];
+        Status = ConditionDB.Conditions[conditionId]; // どの状態異常になるのか
         StatusChanges.Enqueue($"{Base.Name} {Status.StartMessage}"); //状態異常の開始メッセージをキューに追加
     }
 

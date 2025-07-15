@@ -158,6 +158,8 @@ public class BattleSystem : MonoBehaviour
         {
             //ダメージ計算
             DamageDetails damageDetails = targetUnit.Monster.TakeDamage(move, sourceUnit.Monster);
+            Debug.Log($"ダメージ: {damageDetails}"); //デバッグ用
+
             //HP反映
             yield return targetUnit.Hub.UpdateHP();
             //相性/クリティカルのメッセージ
@@ -188,7 +190,7 @@ public class BattleSystem : MonoBehaviour
     IEnumerable RunMoveEffects(Move move, Monster source, Monster target)
     {
         //技の効果を適用
-        var effects = move.Base.Effects;
+        MoveEffects effects = move.Base.Effects;
         if (effects.Boosts != null)
         {
             if (move.Base.Target == Movetarget.Self)
@@ -197,7 +199,7 @@ public class BattleSystem : MonoBehaviour
                 target.ApplyBoost(effects.Boosts);
         }
 
-        //ステータス異常の適用
+        // 何かしらの状態異常技であれば
         if (effects.Status != ConditionID.None)
         {
             target.SetStatus(effects.Status);
